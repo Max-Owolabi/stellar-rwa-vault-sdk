@@ -113,7 +113,25 @@ export class RWAStandardVault {
       }
     }
 
-    // 3. Calculate shares to mint
+    // 3. Enforce vault-wide maximum deposit capacity, if configured
+    if (this.config.maxTotalAssets !== undefined) {
+      const projectedTotalAssets = this._totalAssets + amount;
+      if (projectedTotalAssets > this.config.maxTotalAssets) {
+        const remainingCapacity = this.config.maxTotalAssets > this._totalAssets
+          ? this.config.maxTotalAssets - this._totalAssets
+          : 0n;
+        return {
+          sharesMinted: 0n,
+          assetsDeposited: 0n,
+          depositor,
+          timestamp,
+          status: 'REJECTED',
+          rejectionReason: `Deposit exceeds vault maximum capacity. Cap: ${this.config.maxTotalAssets}, remaining capacity: ${remainingCapacity}`
+        };
+      }
+    }
+
+    // 4. Calculate shares to mint
     const sharesToMint = YieldMath.convertToShares(
       amount,
       this._totalAssets,
@@ -131,10 +149,10 @@ export class RWAStandardVault {
       };
     }
 
-    // 4. Transfer underlying asset from depositor to vault
+    // 5. Transfer underlying asset from depositor to vault
     await this.assetAdapter.transfer(depositor, this.config.vaultAddress, amount);
 
-    // 5. Update vault state
+    // 6. Update vault state
     this._totalAssets += amount;
     this._totalSupply += sharesToMint;
 
@@ -257,6 +275,19 @@ export class RWAStandardVault {
    */
   public convertToAssets(shares: bigint): bigint {
     return YieldMath.convertToAssets(shares, this._totalAssets, this._totalSupply);
+  }
+
+  /**
+   * Get the remaining deposit capacity before the vault's configured
+   * maxTotalAssets cap is reached. Returns null if the vault is uncapped.
+   */
+  public remainingDepositCapacity(): bigint | null {
+    if (this.config.maxTotalAssets === undefined) {
+      return null;
+    }
+    return this.config.maxTotalAssets > this._totalAssets
+      ? this.config.maxTotalAssets - this._totalAssets
+      : 0n;
   }
 
   /**
