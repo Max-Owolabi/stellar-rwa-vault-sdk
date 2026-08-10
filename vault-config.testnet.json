@@ -1,0 +1,10 @@
+{
+  "vaultId": "testnet-vault-usdc-01",
+  "name": "Stellar Testnet RWA Treasury Vault",
+  "symbol": "rwaUSDC",
+  "assetCode": "USDC",
+  "assetIssuer": "GBND24XF3V43PR3GOMPAOGB5LTY54WCH0H3M",
+  "decimals": 7,
+  "vaultAddress": "GBRPYHIL2CI3FNSRH4A3PR3GOMPAOGB5LTY54WCH0H3M123456789012",
+  "initialApy": 0.052
+}

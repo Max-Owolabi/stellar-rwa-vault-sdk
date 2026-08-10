@@ -1,0 +1,10 @@
+{
+  "vaultId": "vault-usdc-01",
+  "name": "Stellar RWA Treasury Bill Vault",
+  "symbol": "rwaUSDC",
+  "assetCode": "USDC",
+  "assetIssuer": "GA5ZSEEXB36GYBHA273EM7VVLSNGFQZOR24W5C6Z3G73TF42G6KCVH6D",
+  "decimals": 7,
+  "vaultAddress": "GBRPYHIL2CI3FNSRH4A3PR3GOMPAOGB5LTY54WCH0H3M123456789012",
+  "initialApy": 0.052
+}

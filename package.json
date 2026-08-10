@@ -4,6 +4,9 @@
   "description": "SDK and developer toolkit for building RWA yield vaults on Stellar with compliance hooks and precision yield accounting.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "stellar-rwa-vault": "./bin/stellar-rwa-vault.js"
+  },
   "scripts": {
     "build": "npx typescript",
     "test": "npx jest",
