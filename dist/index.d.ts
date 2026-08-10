@@ -8,4 +8,5 @@ export * from './adapters/stellar-asset';
 export * from './adapters/treasury-bill';
 export * from './core/vault';
 export * from './core/multi-asset-vault';
+export * from './indexer';
 export * from './cli';
