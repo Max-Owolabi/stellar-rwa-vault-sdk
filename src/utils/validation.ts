@@ -21,7 +21,8 @@ export const VaultConfigSchema = z.object({
   assetIssuer: z.string(),
   decimals: z.number().int().min(0).max(18),
   vaultAddress: StellarAddressSchema,
-  initialApy: z.number().min(0, 'APY cannot be negative').max(1, 'APY cannot exceed 100% (1.0)')
+  initialApy: z.number().min(0, 'APY cannot be negative').max(1, 'APY cannot exceed 100% (1.0)'),
+  metadata: z.record(z.string()).optional()
 });
 
 export function validateStellarAddress(address: string): void {

@@ -9,6 +9,12 @@ import {
 import { YieldMath } from '../math/yield';
 import { validatePositiveAmount, validateStellarAddress, VaultConfigSchema } from '../utils/validation';
 
+export interface VaultTransactionRecord {
+  type: 'DEPOSIT' | 'WITHDRAW';
+  amount: bigint;
+  timestamp: number;
+}
+
 export class RWAStandardVault {
   public config: VaultConfig;
   private assetAdapter: IAssetAdapter;
@@ -20,12 +26,91 @@ export class RWAStandardVault {
   private _lastYieldAccrual: number;
   private _currentApy: number;
 
+  // New State Variables for Issues #46, #48, #62
+  private _isPaused: boolean = false;
+  private _maxDepositCap: bigint | null = null;
+  private _txHistory: VaultTransactionRecord[] = [];
+
   constructor(config: VaultConfig, assetAdapter: IAssetAdapter) {
     VaultConfigSchema.parse(config);
     this.config = config;
     this.assetAdapter = assetAdapter;
     this._currentApy = config.initialApy;
     this._lastYieldAccrual = Math.floor(Date.now() / 1000);
+  }
+
+  /**
+   * Pause vault deposit and withdraw transactions (Issue #46)
+   */
+  public pause(): void {
+    this._isPaused = true;
+  }
+
+  /**
+   * Unpause vault transactions (Issue #46)
+   */
+  public unpause(): void {
+    this._isPaused = false;
+  }
+
+  /**
+   * Check if vault is currently paused (Issue #46)
+   */
+  public isPaused(): boolean {
+    return this._isPaused;
+  }
+
+  /**
+   * Set global maximum deposit cap (Issue #62)
+   */
+  public setMaxDepositCap(cap: bigint | null): void {
+    if (cap !== null && cap <= 0n) {
+      throw new Error('Max deposit cap must be greater than zero or null');
+    }
+    this._maxDepositCap = cap;
+  }
+
+  /**
+   * Get global maximum deposit cap (Issue #62)
+   */
+  public getMaxDepositCap(): bigint | null {
+    return this._maxDepositCap;
+  }
+
+  /**
+   * Get user share percentage relative to total supply (Issue #54)
+   * e.g. 0.25 for 25% share ownership
+   */
+  public getUserSharePercentage(userAddress: string): number {
+    if (this._totalSupply <= 0n) return 0;
+    const userBalance = this.getUserShares(userAddress);
+    if (userBalance <= 0n) return 0;
+
+    return Number(userBalance) / Number(this._totalSupply);
+  }
+
+  /**
+   * Get 24-hour aggregate deposit and withdrawal volume (Issue #48)
+   */
+  public getRolling24HourVolume(currentTimestamp: number = Math.floor(Date.now() / 1000)): {
+    depositVolume: bigint;
+    withdrawVolume: bigint;
+  } {
+    const cutoff = currentTimestamp - 86400;
+    let depositVolume = 0n;
+    let withdrawVolume = 0n;
+
+    for (const tx of this._txHistory) {
+      if (tx.timestamp >= cutoff) {
+        if (tx.type === 'DEPOSIT') {
+          depositVolume += tx.amount;
+        } else if (tx.type === 'WITHDRAW') {
+          withdrawVolume += tx.amount;
+        }
+      }
+    }
+
+    return { depositVolume, withdrawVolume };
   }
 
   /**
@@ -88,8 +173,32 @@ export class RWAStandardVault {
     validateStellarAddress(depositor);
     validatePositiveAmount(amount);
 
+    // Check circuit breaker pause state (Issue #46)
+    if (this._isPaused) {
+      return {
+        sharesMinted: 0n,
+        assetsDeposited: 0n,
+        depositor,
+        timestamp,
+        status: 'REJECTED',
+        rejectionReason: 'Vault is currently paused for deposits and withdrawals'
+      };
+    }
+
     // 1. Accrue outstanding yield prior to share conversion
     this.accrueYield(timestamp);
+
+    // Check maximum deposit cap (Issue #62)
+    if (this._maxDepositCap !== null && this._totalAssets + amount > this._maxDepositCap) {
+      return {
+        sharesMinted: 0n,
+        assetsDeposited: 0n,
+        depositor,
+        timestamp,
+        status: 'REJECTED',
+        rejectionReason: `Deposit exceeds maximum vault cap. Current total assets: ${this._totalAssets}, requested deposit: ${amount}, cap: ${this._maxDepositCap}`
+      };
+    }
 
     // 2. Execute compliance hook checks
     const depositContext = {
@@ -134,12 +243,18 @@ export class RWAStandardVault {
     // 4. Transfer underlying asset from depositor to vault
     await this.assetAdapter.transfer(depositor, this.config.vaultAddress, amount);
 
-    // 5. Update vault state
+    // 5. Update vault state & record transaction history (Issue #48)
     this._totalAssets += amount;
     this._totalSupply += sharesToMint;
 
     const currentBalance = this._userShares.get(depositor) ?? 0n;
     this._userShares.set(depositor, currentBalance + sharesToMint);
+
+    this._txHistory.push({
+      type: 'DEPOSIT',
+      amount,
+      timestamp
+    });
 
     return {
       sharesMinted: sharesToMint,
@@ -160,6 +275,18 @@ export class RWAStandardVault {
   ): Promise<WithdrawResult> {
     validateStellarAddress(withdrawer);
     validatePositiveAmount(shares);
+
+    // Check circuit breaker pause state (Issue #46)
+    if (this._isPaused) {
+      return {
+        sharesBurned: 0n,
+        assetsReturned: 0n,
+        withdrawer,
+        timestamp,
+        status: 'REJECTED',
+        rejectionReason: 'Vault is currently paused for deposits and withdrawals'
+      };
+    }
 
     // 1. Accrue yield first
     this.accrueYield(timestamp);
@@ -210,10 +337,16 @@ export class RWAStandardVault {
     // 5. Transfer assets back to withdrawer
     await this.assetAdapter.transfer(this.config.vaultAddress, withdrawer, assetsToReturn);
 
-    // 6. Update state
+    // 6. Update state & record transaction history (Issue #48)
     this._totalAssets -= assetsToReturn;
     this._totalSupply -= shares;
     this._userShares.set(withdrawer, userShares - shares);
+
+    this._txHistory.push({
+      type: 'WITHDRAW',
+      amount: assetsToReturn,
+      timestamp
+    });
 
     return {
       sharesBurned: shares,

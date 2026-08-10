@@ -7,6 +7,7 @@ export interface VaultConfig {
   decimals: number;
   vaultAddress: string;
   initialApy: number; // e.g. 0.05 for 5% APY
+  metadata?: Record<string, string>;
 }
 
 export interface DepositContext {
