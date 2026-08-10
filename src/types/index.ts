@@ -69,3 +69,10 @@ export interface VaultState {
   lastYieldAccrual: number;
   currentApy: number;
 }
+
+export interface VaultEventFilter {
+  eventType?: 'DEPOSIT' | 'WITHDRAW' | 'YIELD_ACCRUAL';
+  address?: string;
+  fromTimestamp?: number;
+  toTimestamp?: number;
+}

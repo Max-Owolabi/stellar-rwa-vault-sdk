@@ -73,15 +73,49 @@ export class YieldMath {
   }
 
   /**
-   * Calculate current price per share.
-   * Standard 1.0 = 1 share equals 1 asset unit (scaled by decimal places e.g. 1e7 or 1e18)
+   * Calculate current price per share safely preventing NaN or division by zero.
+   * Standard 1.0 = 1 share equals 1 asset unit
    */
   public static calculateSharePrice(totalAssets: bigint, totalSupply: bigint): number {
+    return this.safeSharePriceDivision(totalAssets, totalSupply);
+  }
+
+  /**
+   * Safe zero-checking math wrapper for share price division (Issue #7)
+   */
+  public static safeSharePriceDivision(totalAssets: bigint, totalSupply: bigint): number {
     if (totalSupply <= 0n || totalAssets <= 0n) return 1.0;
 
     const totalAssetsBN = new BigNumber(totalAssets.toString());
     const totalSupplyBN = new BigNumber(totalSupply.toString());
 
-    return totalAssetsBN.dividedBy(totalSupplyBN).toNumber();
+    if (totalSupplyBN.isZero()) return 1.0;
+
+    const ratio = totalAssetsBN.dividedBy(totalSupplyBN);
+    return ratio.isNaN() || !ratio.isFinite() ? 1.0 : ratio.toNumber();
+  }
+
+  /**
+   * Calculate compounded yield over arbitrary time intervals (Issue #6)
+   * Formula: Principal * ((1 + APY / n) ^ (n * t)) - Principal
+   */
+  public static calculateCompoundedYield(
+    principalAssets: bigint,
+    apy: number,
+    durationSeconds: number,
+    compoundingFrequencyPerYear: number = 365
+  ): bigint {
+    if (principalAssets <= 0n || apy <= 0 || durationSeconds <= 0) return 0n;
+
+    const principalBN = new BigNumber(principalAssets.toString());
+    const rateBN = new BigNumber(apy).dividedBy(compoundingFrequencyPerYear);
+    const timeInYears = new BigNumber(durationSeconds).dividedBy(this.SECONDS_PER_YEAR);
+    const periodsBN = new BigNumber(compoundingFrequencyPerYear).times(timeInYears);
+
+    const compoundFactor = new BigNumber(1).plus(rateBN).pow(periodsBN.toNumber());
+    const finalAssetsBN = principalBN.times(compoundFactor);
+    const yieldBN = finalAssetsBN.minus(principalBN).dividedToIntegerBy(1);
+
+    return BigInt(yieldBN.toFixed(0));
   }
 }
