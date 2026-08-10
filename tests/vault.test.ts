@@ -86,4 +86,44 @@ describe('RWAStandardVault Core Functionality', () => {
     expect(vault.totalAssets()).toBe(0n);
     expect(vault.totalSupply()).toBe(0n);
   });
+
+  test('Deposit rejected when it would exceed configured maxTotalAssets cap', async () => {
+    const cappedConfig: VaultConfig = {
+      ...config,
+      maxTotalAssets: 500_000_000n // 50 USDC cap
+    };
+    const cappedVault = new RWAStandardVault(cappedConfig, assetAdapter);
+    cappedVault.addComplianceHook(whitelistHook);
+
+    const res = await cappedVault.deposit(mockUser, 1_000_000_000n);
+
+    expect(res.status).toBe('REJECTED');
+    expect(res.rejectionReason).toContain('exceeds vault maximum capacity');
+    expect(cappedVault.totalAssets()).toBe(0n);
+  });
+
+  test('Deposit succeeds up to the maxTotalAssets cap and reports remaining capacity', async () => {
+    const cappedConfig: VaultConfig = {
+      ...config,
+      maxTotalAssets: 500_000_000n // 50 USDC cap
+    };
+    const cappedVault = new RWAStandardVault(cappedConfig, assetAdapter);
+    cappedVault.addComplianceHook(whitelistHook);
+
+    expect(cappedVault.remainingDepositCapacity()).toBe(500_000_000n);
+
+    const res = await cappedVault.deposit(mockUser, 500_000_000n);
+
+    expect(res.status).toBe('SUCCESS');
+    expect(cappedVault.totalAssets()).toBe(500_000_000n);
+    expect(cappedVault.remainingDepositCapacity()).toBe(0n);
+
+    // A further deposit, even of 1 stroop, should now be rejected
+    const secondRes = await cappedVault.deposit(mockUser, 1n);
+    expect(secondRes.status).toBe('REJECTED');
+  });
+
+  test('Uncapped vault reports null remaining deposit capacity', () => {
+    expect(vault.remainingDepositCapacity()).toBeNull();
+  });
 });

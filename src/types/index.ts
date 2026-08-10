@@ -7,6 +7,7 @@ export interface VaultConfig {
   decimals: number;
   vaultAddress: string;
   initialApy: number; // e.g. 0.05 for 5% APY
+  maxTotalAssets?: bigint; // optional cap on total underlying assets held by the vault; undefined/0 = uncapped
 }
 
 export interface DepositContext {
