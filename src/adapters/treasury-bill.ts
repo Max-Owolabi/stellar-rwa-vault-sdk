@@ -1,4 +1,5 @@
 import { IAssetAdapter } from '../types';
+import { AssetAdapterError } from '../errors';
 import BigNumber from 'bignumber.js';
 
 export interface OracleNavFeed {
@@ -7,6 +8,8 @@ export interface OracleNavFeed {
   lastUpdated: number;
 }
 
+const SECONDS_PER_DAY = 86400;
+
 export class TreasuryBillAdapter implements IAssetAdapter {
   public assetCode: string;
   public issuer: string;
@@ -14,12 +17,14 @@ export class TreasuryBillAdapter implements IAssetAdapter {
 
   private oracleFeed: OracleNavFeed;
   private balances: Map<string, bigint> = new Map();
+  private maturityTimestamp: number | null = null;
 
   constructor(
     assetCode: string = 'USDY',
     issuer: string = 'GBND24XF3V43PR3GOMPAOGB5LTY54WCH0H3M',
     initialNav: number = 1.0,
-    decimals: number = 7
+    decimals: number = 7,
+    maturityDate?: Date | number
   ) {
     this.assetCode = assetCode;
     this.issuer = issuer;
@@ -29,6 +34,55 @@ export class TreasuryBillAdapter implements IAssetAdapter {
       navPriceUsd: initialNav,
       lastUpdated: Math.floor(Date.now() / 1000)
     };
+    if (maturityDate !== undefined) {
+      this.setMaturityDate(maturityDate);
+    }
+  }
+
+  /**
+   * Set (or update) the T-Bill bond maturity date.
+   * Accepts a Date object or a Unix timestamp in seconds (Issue #61).
+   */
+  public setMaturityDate(maturityDate: Date | number): void {
+    const timestamp =
+      maturityDate instanceof Date ? Math.floor(maturityDate.getTime() / 1000) : maturityDate;
+
+    if (!Number.isFinite(timestamp) || timestamp <= 0) {
+      throw new AssetAdapterError('Maturity date must resolve to a valid positive timestamp');
+    }
+
+    this.maturityTimestamp = timestamp;
+  }
+
+  /**
+   * Get the configured maturity date as a Unix timestamp (seconds), or null if unset.
+   */
+  public getMaturityDate(): number | null {
+    return this.maturityTimestamp;
+  }
+
+  /**
+   * Calculate the number of whole days remaining until bond maturity (Issue #61).
+   * Returns 0 once the bond has matured (never negative).
+   * Optionally accepts a reference timestamp (Unix seconds) for deterministic testing.
+   */
+  public getDaysUntilMaturity(fromTimestampSeconds: number = Math.floor(Date.now() / 1000)): number {
+    if (this.maturityTimestamp === null) {
+      throw new AssetAdapterError('Maturity date has not been set for this T-Bill adapter');
+    }
+
+    const remainingSeconds = this.maturityTimestamp - fromTimestampSeconds;
+    if (remainingSeconds <= 0) return 0;
+
+    return Math.ceil(remainingSeconds / SECONDS_PER_DAY);
+  }
+
+  /**
+   * Returns true if the bond has reached or passed its maturity date.
+   */
+  public isMatured(fromTimestampSeconds: number = Math.floor(Date.now() / 1000)): boolean {
+    if (this.maturityTimestamp === null) return false;
+    return fromTimestampSeconds >= this.maturityTimestamp;
   }
 
   /**
