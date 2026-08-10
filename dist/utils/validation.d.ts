@@ -31,3 +31,7 @@ export declare const VaultConfigSchema: z.ZodObject<{
 }>;
 export declare function validateStellarAddress(address: string): void;
 export declare function validatePositiveAmount(amount: bigint): void;
+export declare function validateStellarMemo(memo: {
+    type: 'text' | 'id' | 'hash';
+    value: string;
+}): void;
