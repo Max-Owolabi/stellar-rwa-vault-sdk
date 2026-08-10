@@ -4,6 +4,7 @@ exports.VaultConfigSchema = exports.PositiveBigIntSchema = exports.StellarAddres
 exports.validateStellarAddress = validateStellarAddress;
 exports.validatePositiveAmount = validatePositiveAmount;
 exports.validateStellarMemo = validateStellarMemo;
+exports.validateStellarMinReserve = validateStellarMinReserve;
 const zod_1 = require("zod");
 // Stellar account address regex (G... 56 chars public key)
 const STELLAR_ADDRESS_REGEX = /^G[A-Z2-7]{55}$/;
@@ -23,7 +24,10 @@ exports.VaultConfigSchema = zod_1.z.object({
     assetIssuer: zod_1.z.string(),
     decimals: zod_1.z.number().int().min(0).max(18),
     vaultAddress: exports.StellarAddressSchema,
-    initialApy: zod_1.z.number().min(0, 'APY cannot be negative').max(1, 'APY cannot exceed 100% (1.0)')
+    initialApy: zod_1.z.number().min(0, 'APY cannot be negative').max(1, 'APY cannot exceed 100% (1.0)'),
+    maxTotalAssets: zod_1.z.bigint().refine((val) => val > 0n, {
+        message: 'maxTotalAssets must be greater than zero when provided'
+    }).optional()
 });
 function validateStellarAddress(address) {
     exports.StellarAddressSchema.parse(address);
@@ -50,5 +54,14 @@ function validateStellarMemo(memo) {
         if (!/^[0-9a-fA-F]{64}$/.test(memo.value)) {
             throw new Error('Stellar memo hash must be a 64-character hexadecimal string (32 bytes)');
         }
+    }
+}
+function validateStellarMinReserve(accountBalanceXlm, subentries = 0) {
+    if (accountBalanceXlm < 0) {
+        throw new Error('Account XLM balance cannot be negative');
+    }
+    const minRequired = 0.5 * (2 + subentries);
+    if (accountBalanceXlm < minRequired) {
+        throw new Error(`Insufficient XLM balance for Stellar minimum base reserve. Required: ${minRequired} XLM, Account Has: ${accountBalanceXlm} XLM`);
     }
 }

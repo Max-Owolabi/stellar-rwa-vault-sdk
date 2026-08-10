@@ -54,6 +54,11 @@ export declare class RWAStandardVault {
      */
     convertToAssets(shares: bigint): bigint;
     /**
+     * Get the remaining deposit capacity before the vault's configured
+     * maxTotalAssets cap is reached. Returns null if the vault is uncapped.
+     */
+    remainingDepositCapacity(): bigint | null;
+    /**
      * Get current vault state summary
      */
     getState(): VaultState;

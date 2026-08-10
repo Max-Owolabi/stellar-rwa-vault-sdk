@@ -5,6 +5,8 @@ export * from './utils/logger';
 export * from './math/yield';
 export * from './compliance/whitelist-hook';
 export * from './compliance/soroban-identity-hook';
+export * from './compliance/accreditation-reminder-hook';
+export * from './analytics/yield-tracker';
 export * from './adapters/stellar-asset';
 export * from './adapters/treasury-bill';
 export * from './core/vault';

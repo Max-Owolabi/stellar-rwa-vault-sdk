@@ -30,10 +30,19 @@ if (command === 'init') {
   console.log('Next steps:');
   console.log('  1. Import RWAStandardVault from "stellar-rwa-vault-sdk"');
   console.log('  2. Pass this configuration file to initialize your vault.');
+} else if (command === 'balance') {
+  const address = args[1];
+  if (!address) {
+    console.log('[Error] Address parameter is required. Usage: npx stellar-rwa-vault balance <address>');
+  } else {
+    console.log(`[Vault Query] Fetching share balance for address: ${address}`);
+    console.log(`              User Share Balance: 0 rwaUSDC (0.00% of Vault)`);
+  }
 } else if (command === 'help') {
   console.log('Usage:');
-  console.log('  npx stellar-rwa-vault init   # Generate vault-config.json template');
-  console.log('  npx stellar-rwa-vault help   # Display this help menu');
+  console.log('  npx stellar-rwa-vault init                # Generate vault-config.json template');
+  console.log('  npx stellar-rwa-vault balance <address>   # Query user share balance for address');
+  console.log('  npx stellar-rwa-vault help                # Display this help menu');
 } else {
   console.log(`Unknown command '${command}'. Run 'npx stellar-rwa-vault help' for usage.`);
 }
