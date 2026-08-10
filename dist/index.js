@@ -22,4 +22,5 @@ __exportStar(require("./compliance/soroban-identity-hook"), exports);
 __exportStar(require("./adapters/stellar-asset"), exports);
 __exportStar(require("./adapters/treasury-bill"), exports);
 __exportStar(require("./core/vault"), exports);
+__exportStar(require("./core/multi-asset-vault"), exports);
 __exportStar(require("./cli"), exports);
