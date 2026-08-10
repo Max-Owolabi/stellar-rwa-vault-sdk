@@ -1,6 +1,7 @@
 export * from './types';
 export * from './errors';
 export * from './utils/validation';
+export * from './utils/logger';
 export * from './math/yield';
 export * from './compliance/whitelist-hook';
 export * from './compliance/soroban-identity-hook';
