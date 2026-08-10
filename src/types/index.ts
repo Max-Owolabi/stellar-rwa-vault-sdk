@@ -76,3 +76,70 @@ export interface VaultEventFilter {
   fromTimestamp?: number;
   toTimestamp?: number;
 }
+
+export type VaultEventType = 'DEPOSIT' | 'WITHDRAW' | 'YIELD_ACCRUAL';
+
+export interface DepositVaultEventData {
+  depositor: string;
+  amount: bigint;
+  sharesMinted: bigint;
+  totalAssets: bigint;
+  totalSupply: bigint;
+}
+
+export interface WithdrawVaultEventData {
+  withdrawer: string;
+  sharesBurned: bigint;
+  assetsReturned: bigint;
+  totalAssets: bigint;
+  totalSupply: bigint;
+}
+
+export interface YieldAccrualVaultEventData {
+  accruedYield: bigint;
+  totalAssets: bigint;
+  apy?: number; // decimal APY (e.g. 0.05 for 5%), decoded from on-chain basis points
+}
+
+export type VaultEventData =
+  | DepositVaultEventData
+  | WithdrawVaultEventData
+  | YieldAccrualVaultEventData;
+
+interface BaseVaultEvent {
+  id: string;
+  ledger: number;
+  timestamp: number; // Unix seconds derived from ledger close time
+  txHash: string;
+  contractId: string;
+}
+
+export interface DepositVaultEvent extends BaseVaultEvent {
+  type: 'DEPOSIT';
+  data: DepositVaultEventData;
+}
+
+export interface WithdrawVaultEvent extends BaseVaultEvent {
+  type: 'WITHDRAW';
+  data: WithdrawVaultEventData;
+}
+
+export interface YieldAccrualVaultEvent extends BaseVaultEvent {
+  type: 'YIELD_ACCRUAL';
+  data: YieldAccrualVaultEventData;
+}
+
+/**
+ * A normalized, application-ready vault event decoded from a raw Soroban
+ * contract event log emitted by an on-chain RWA vault contract.
+ */
+export type VaultEvent = DepositVaultEvent | WithdrawVaultEvent | YieldAccrualVaultEvent;
+
+export interface SorobanEventIndexerConfig {
+  rpcUrl: string;
+  vaultContractId: string;
+  pollIntervalMs?: number;
+  startLedger?: number;
+}
+
+export type VaultEventListener = (event: VaultEvent) => void;
