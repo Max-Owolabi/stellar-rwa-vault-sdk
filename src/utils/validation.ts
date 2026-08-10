@@ -31,3 +31,23 @@ export function validateStellarAddress(address: string): void {
 export function validatePositiveAmount(amount: bigint): void {
   PositiveBigIntSchema.parse(amount);
 }
+
+export function validateStellarMemo(memo: { type: 'text' | 'id' | 'hash'; value: string }): void {
+  if (!memo || !memo.value) return;
+
+  if (memo.type === 'text') {
+    const byteLength = Buffer.byteLength(memo.value, 'utf-8');
+    if (byteLength > 28) {
+      throw new Error(`Stellar memo text exceeds max 28 bytes limit. Current size: ${byteLength} bytes`);
+    }
+  } else if (memo.type === 'id') {
+    const idNum = BigInt(memo.value);
+    if (idNum < 0n || idNum > 18446744073709551615n) {
+      throw new Error('Stellar memo ID must be a valid unsigned 64-bit integer');
+    }
+  } else if (memo.type === 'hash') {
+    if (!/^[0-9a-fA-F]{64}$/.test(memo.value)) {
+      throw new Error('Stellar memo hash must be a 64-character hexadecimal string (32 bytes)');
+    }
+  }
+}
