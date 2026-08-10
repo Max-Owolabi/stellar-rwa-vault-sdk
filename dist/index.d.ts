@@ -1,4 +1,5 @@
 export * from './types';
+export * from './errors';
 export * from './utils/validation';
 export * from './math/yield';
 export * from './compliance/whitelist-hook';
