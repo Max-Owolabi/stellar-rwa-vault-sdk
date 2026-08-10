@@ -58,15 +58,40 @@ class YieldMath {
         return BigInt(yieldBN.toFixed(0));
     }
     /**
-     * Calculate current price per share.
-     * Standard 1.0 = 1 share equals 1 asset unit (scaled by decimal places e.g. 1e7 or 1e18)
+     * Calculate current price per share safely preventing NaN or division by zero.
+     * Standard 1.0 = 1 share equals 1 asset unit
      */
     static calculateSharePrice(totalAssets, totalSupply) {
+        return this.safeSharePriceDivision(totalAssets, totalSupply);
+    }
+    /**
+     * Safe zero-checking math wrapper for share price division (Issue #7)
+     */
+    static safeSharePriceDivision(totalAssets, totalSupply) {
         if (totalSupply <= 0n || totalAssets <= 0n)
             return 1.0;
         const totalAssetsBN = new bignumber_js_1.default(totalAssets.toString());
         const totalSupplyBN = new bignumber_js_1.default(totalSupply.toString());
-        return totalAssetsBN.dividedBy(totalSupplyBN).toNumber();
+        if (totalSupplyBN.isZero())
+            return 1.0;
+        const ratio = totalAssetsBN.dividedBy(totalSupplyBN);
+        return ratio.isNaN() || !ratio.isFinite() ? 1.0 : ratio.toNumber();
+    }
+    /**
+     * Calculate compounded yield over arbitrary time intervals (Issue #6)
+     * Formula: Principal * ((1 + APY / n) ^ (n * t)) - Principal
+     */
+    static calculateCompoundedYield(principalAssets, apy, durationSeconds, compoundingFrequencyPerYear = 365) {
+        if (principalAssets <= 0n || apy <= 0 || durationSeconds <= 0)
+            return 0n;
+        const principalBN = new bignumber_js_1.default(principalAssets.toString());
+        const rateBN = new bignumber_js_1.default(apy).dividedBy(compoundingFrequencyPerYear);
+        const timeInYears = new bignumber_js_1.default(durationSeconds).dividedBy(this.SECONDS_PER_YEAR);
+        const periodsBN = new bignumber_js_1.default(compoundingFrequencyPerYear).times(timeInYears);
+        const compoundFactor = new bignumber_js_1.default(1).plus(rateBN).pow(periodsBN.toNumber());
+        const finalAssetsBN = principalBN.times(compoundFactor);
+        const yieldBN = finalAssetsBN.minus(principalBN).dividedToIntegerBy(1);
+        return BigInt(yieldBN.toFixed(0));
     }
 }
 exports.YieldMath = YieldMath;

@@ -17,8 +17,17 @@ export declare class YieldMath {
      */
     static calculateLinearYield(principalAssets: bigint, apy: number, durationSeconds: number): bigint;
     /**
-     * Calculate current price per share.
-     * Standard 1.0 = 1 share equals 1 asset unit (scaled by decimal places e.g. 1e7 or 1e18)
+     * Calculate current price per share safely preventing NaN or division by zero.
+     * Standard 1.0 = 1 share equals 1 asset unit
      */
     static calculateSharePrice(totalAssets: bigint, totalSupply: bigint): number;
+    /**
+     * Safe zero-checking math wrapper for share price division (Issue #7)
+     */
+    static safeSharePriceDivision(totalAssets: bigint, totalSupply: bigint): number;
+    /**
+     * Calculate compounded yield over arbitrary time intervals (Issue #6)
+     * Formula: Principal * ((1 + APY / n) ^ (n * t)) - Principal
+     */
+    static calculateCompoundedYield(principalAssets: bigint, apy: number, durationSeconds: number, compoundingFrequencyPerYear?: number): bigint;
 }
