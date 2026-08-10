@@ -7,6 +7,7 @@ export interface VaultConfig {
     decimals: number;
     vaultAddress: string;
     initialApy: number;
+    maxTotalAssets?: bigint;
 }
 export interface DepositContext {
     depositor: string;

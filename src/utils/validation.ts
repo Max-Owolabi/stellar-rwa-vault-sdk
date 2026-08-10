@@ -54,3 +54,15 @@ export function validateStellarMemo(memo: { type: 'text' | 'id' | 'hash'; value:
     }
   }
 }
+
+export function validateStellarMinReserve(accountBalanceXlm: number, subentries: number = 0): void {
+  if (accountBalanceXlm < 0) {
+    throw new Error('Account XLM balance cannot be negative');
+  }
+  const minRequired = 0.5 * (2 + subentries);
+  if (accountBalanceXlm < minRequired) {
+    throw new Error(
+      `Insufficient XLM balance for Stellar minimum base reserve. Required: ${minRequired} XLM, Account Has: ${accountBalanceXlm} XLM`
+    );
+  }
+}

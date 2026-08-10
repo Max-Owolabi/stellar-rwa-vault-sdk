@@ -1,0 +1,65 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Stellar RWA Vault SDK REST API",
+    "version": "1.0.0",
+    "description": "OpenAPI Specification for Stellar RWA Yield Vault REST API Wrappers"
+  },
+  "paths": {
+    "/vault/deposit": {
+      "post": {
+        "summary": "Deposit underlying assets into RWA Vault",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "depositor": { "type": "string" },
+                  "amount": { "type": "string" }
+                },
+                "required": ["depositor", "amount"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Deposit successful" },
+          "400": { "description": "Deposit rejected or compliance error" }
+        }
+      }
+    },
+    "/vault/withdraw": {
+      "post": {
+        "summary": "Redeem vault shares for underlying assets",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "withdrawer": { "type": "string" },
+                  "shares": { "type": "string" }
+                },
+                "required": ["withdrawer", "shares"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Withdrawal successful" }
+        }
+      }
+    },
+    "/vault/state": {
+      "get": {
+        "summary": "Get current vault state and share price",
+        "responses": {
+          "200": { "description": "Current vault state summary" }
+        }
+      }
+    }
+  }
+}

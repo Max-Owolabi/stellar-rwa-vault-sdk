@@ -10,6 +10,7 @@ export declare const VaultConfigSchema: z.ZodObject<{
     decimals: z.ZodNumber;
     vaultAddress: z.ZodEffects<z.ZodString, string, string>;
     initialApy: z.ZodNumber;
+    maxTotalAssets: z.ZodOptional<z.ZodEffects<z.ZodBigInt, bigint, bigint>>;
 }, "strip", z.ZodTypeAny, {
     symbol: string;
     vaultId: string;
@@ -19,6 +20,7 @@ export declare const VaultConfigSchema: z.ZodObject<{
     decimals: number;
     vaultAddress: string;
     initialApy: number;
+    maxTotalAssets?: bigint | undefined;
 }, {
     symbol: string;
     vaultId: string;
@@ -28,6 +30,7 @@ export declare const VaultConfigSchema: z.ZodObject<{
     decimals: number;
     vaultAddress: string;
     initialApy: number;
+    maxTotalAssets?: bigint | undefined;
 }>;
 export declare function validateStellarAddress(address: string): void;
 export declare function validatePositiveAmount(amount: bigint): void;
@@ -35,3 +38,4 @@ export declare function validateStellarMemo(memo: {
     type: 'text' | 'id' | 'hash';
     value: string;
 }): void;
+export declare function validateStellarMinReserve(accountBalanceXlm: number, subentries?: number): void;
