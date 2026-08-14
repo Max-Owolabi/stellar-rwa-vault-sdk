@@ -11,6 +11,7 @@ import {
   WithdrawVaultEventData,
   YieldAccrualVaultEventData
 } from '../types';
+import { closeTimeToUnixSeconds } from '../utils/timestamp';
 
 export const SorobanEventIndexerConfigSchema = z.object({
   rpcUrl: z.string().min(1, 'Soroban RPC URL is required'),
@@ -56,11 +57,6 @@ function toBigInt(value: unknown): bigint {
     `Expected bigint-compatible event value but received ${typeof value}`,
     'ERR_SOROBAN_EVENT_DECODE'
   );
-}
-
-function timestampFromIso(iso: string): number {
-  const parsed = Date.parse(iso);
-  return Number.isNaN(parsed) ? 0 : Math.floor(parsed / 1000);
 }
 
 /**
@@ -177,7 +173,7 @@ export class DefaultVaultEventDecoder implements VaultEventDecoder {
       id: event.id,
       type,
       ledger: event.ledger,
-      timestamp: timestampFromIso(event.ledgerClosedAt),
+      timestamp: closeTimeToUnixSeconds(event.ledgerClosedAt),
       txHash: event.txHash,
       contractId: String(event.contractId),
       data
