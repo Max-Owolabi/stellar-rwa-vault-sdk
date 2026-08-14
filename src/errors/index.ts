@@ -35,3 +35,10 @@ export class AssetAdapterError extends VaultError {
     this.name = 'AssetAdapterError';
   }
 }
+
+export class FlashLoanGuardError extends VaultError {
+  constructor(message: string, code: string = 'ERR_FLASH_LOAN_GUARD') {
+    super(message, code);
+    this.name = 'FlashLoanGuardError';
+  }
+}
