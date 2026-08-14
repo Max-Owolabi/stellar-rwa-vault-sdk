@@ -8,6 +8,7 @@ export interface VaultConfig {
   vaultAddress: string;
   initialApy: number; // e.g. 0.05 for 5% APY
   maxTotalAssets?: bigint; // optional cap on total underlying assets held by the vault; undefined/0 = uncapped
+  flashLoanGuardSeconds?: number; // min seconds an address must wait after depositing before it may withdraw; 0 (default) blocks same-block deposit+withdraw, undefined behaves as 0
 }
 
 export interface DepositContext {

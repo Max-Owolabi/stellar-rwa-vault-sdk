@@ -19,6 +19,7 @@ export class RWAStandardVault {
   private _userShares: Map<string, bigint> = new Map();
   private _lastYieldAccrual: number;
   private _currentApy: number;
+  private _lastDepositTimestamp: Map<string, number> = new Map();
 
   constructor(config: VaultConfig, assetAdapter: IAssetAdapter) {
     VaultConfigSchema.parse(config);
@@ -158,6 +159,7 @@ export class RWAStandardVault {
 
     const currentBalance = this._userShares.get(depositor) ?? 0n;
     this._userShares.set(depositor, currentBalance + sharesToMint);
+    this._lastDepositTimestamp.set(depositor, timestamp);
 
     return {
       sharesMinted: sharesToMint,
@@ -179,10 +181,31 @@ export class RWAStandardVault {
     validateStellarAddress(withdrawer);
     validatePositiveAmount(shares);
 
-    // 1. Accrue yield first
+    // 1. Flash loan guard: reject a withdrawal that lands inside the
+    //    configured lock window following this address's most recent
+    //    deposit. Defaults to blocking same-block (same timestamp)
+    //    deposit-then-withdraw sequences, which prevents the classic
+    //    single-transaction flash loan pattern of inflating a position,
+    //    exploiting share pricing, then unwinding before yield/compliance
+    //    checks can react.
+    const guardWindow = this.config.flashLoanGuardSeconds ?? 0;
+    const lastDeposit = this._lastDepositTimestamp.get(withdrawer);
+    if (lastDeposit !== undefined && timestamp - lastDeposit <= guardWindow) {
+      const unlocksAt = lastDeposit + guardWindow + 1;
+      return {
+        sharesBurned: 0n,
+        assetsReturned: 0n,
+        withdrawer,
+        timestamp,
+        status: 'REJECTED',
+        rejectionReason: `Flash loan guard: withdrawal locked until timestamp ${unlocksAt} (${unlocksAt - timestamp}s remaining) after most recent deposit`
+      };
+    }
+
+    // 2. Accrue yield first
     this.accrueYield(timestamp);
 
-    // 2. Verify user has enough shares
+    // 3. Verify user has enough shares
     const userShares = this._userShares.get(withdrawer) ?? 0n;
     if (userShares < shares) {
       return {
@@ -195,14 +218,14 @@ export class RWAStandardVault {
       };
     }
 
-    // 3. Calculate asset return amount
+    // 4. Calculate asset return amount
     const assetsToReturn = YieldMath.convertToAssets(
       shares,
       this._totalAssets,
       this._totalSupply
     );
 
-    // 4. Compliance hooks
+    // 5. Compliance hooks
     const withdrawContext = {
       withdrawer,
       shares,
@@ -225,10 +248,10 @@ export class RWAStandardVault {
       }
     }
 
-    // 5. Transfer assets back to withdrawer
+    // 6. Transfer assets back to withdrawer
     await this.assetAdapter.transfer(this.config.vaultAddress, withdrawer, assetsToReturn);
 
-    // 6. Update state
+    // 7. Update state
     this._totalAssets -= assetsToReturn;
     this._totalSupply -= shares;
     this._userShares.set(withdrawer, userShares - shares);
@@ -288,6 +311,24 @@ export class RWAStandardVault {
     return this.config.maxTotalAssets > this._totalAssets
       ? this.config.maxTotalAssets - this._totalAssets
       : 0n;
+  }
+
+  /**
+   * Seconds remaining before the flash loan guard lets `address` withdraw,
+   * relative to `atTimestamp` (defaults to now). Returns 0 if the address
+   * has never deposited or is already clear to withdraw.
+   */
+  public remainingFlashLoanLockSeconds(
+    address: string,
+    atTimestamp: number = Math.floor(Date.now() / 1000)
+  ): number {
+    const lastDeposit = this._lastDepositTimestamp.get(address);
+    if (lastDeposit === undefined) {
+      return 0;
+    }
+    const guardWindow = this.config.flashLoanGuardSeconds ?? 0;
+    const unlocksAt = lastDeposit + guardWindow + 1;
+    return unlocksAt > atTimestamp ? unlocksAt - atTimestamp : 0;
   }
 
   /**

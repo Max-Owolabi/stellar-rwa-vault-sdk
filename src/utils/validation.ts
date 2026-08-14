@@ -24,7 +24,8 @@ export const VaultConfigSchema = z.object({
   initialApy: z.number().min(0, 'APY cannot be negative').max(1, 'APY cannot exceed 100% (1.0)'),
   maxTotalAssets: z.bigint().refine((val) => val > 0n, {
     message: 'maxTotalAssets must be greater than zero when provided'
-  }).optional()
+  }).optional(),
+  flashLoanGuardSeconds: z.number().int().min(0, 'flashLoanGuardSeconds cannot be negative').optional()
 });
 
 export function validateStellarAddress(address: string): void {
